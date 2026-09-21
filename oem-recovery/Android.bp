@@ -22,24 +22,18 @@ ufsbsg_cc_defaults {
      },
 }
 
+// A/B boot control uses GPT/UFS operations, not the legacy Edify updater.
 cc_library {
     name: "librecovery_updater",
     vendor: true,
     recovery_available: true,
-    defaults: ["libion_header_paths" ,"ufsbsg_defaults"],
+    defaults: ["ufsbsg_defaults"],
     srcs: [
         "gpt-utils.cpp",
-        "oem-updater.cpp",
         "recovery-ufs-bsg.cpp",
-    ],
-    static_libs: [
-            "libbase",
-            "libedify",
-            "libotautil",
     ],
     shared_libs: [
             "libcutils",
-            "libion",
             "liblog",
             "libz",
     ],
@@ -47,9 +41,6 @@ cc_library {
         "-Wall",
         "-Wno-unused-parameter",
     ],
-    sanitize: {
-        cfi: false,
-    },
     owner: "qti",
     export_include_dirs: ["."],
     header_libs: [
