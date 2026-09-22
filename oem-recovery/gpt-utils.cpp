@@ -146,28 +146,45 @@ int32_t set_boot_lun(char *sg_dev,uint8_t boot_lun_id);
  */
 static int blk_rw(int fd, int rw, int64_t offset, uint8_t *buf, unsigned len)
 {
-    int r;
+    off64_t position;
 
-    if (lseek64(fd, offset, SEEK_SET) < 0) {
+    do {
+        position = lseek64(fd, offset, SEEK_SET);
+    } while (position < 0 && errno == EINTR);
+    if (position < 0) {
         fprintf(stderr, "block dev lseek64 %" PRIi64 " failed: %s\n", offset,
                 strerror(errno));
         return -1;
     }
 
-    if (rw)
-        r = write(fd, buf, len);
-    else
-        r = read(fd, buf, len);
-
-    if (r < 0)
-        fprintf(stderr, "block dev %s failed: %s\n", rw ? "write" : "read",
-                strerror(errno));
-    else
-        r = 0;
-
-    return r;
+    unsigned completed = 0;
+    while (completed < len) {
+        ssize_t result = rw ? write(fd, buf + completed, len - completed)
+                            : read(fd, buf + completed, len - completed);
+        if (result < 0 && errno == EINTR)
+            continue;
+        if (result <= 0) {
+            if (result == 0)
+                errno = EIO;
+            fprintf(stderr, "block dev %s failed: %s\n", rw ? "write" : "read",
+                    strerror(errno));
+            return -1;
+        }
+        completed += static_cast<unsigned>(result);
+    }
+    return 0;
 }
 
+static int sync_gpt(int fd)
+{
+    int result;
+    do {
+        result = fsync(fd);
+    } while (result < 0 && errno == EINTR);
+    if (result < 0)
+        ALOGE("%s: Failed to synchronize GPT: %s", __func__, strerror(errno));
+    return result;
+}
 
 
 /**
@@ -888,8 +905,10 @@ int prepare_partitions(enum boot_update_stage stage, const char *dev_path)
 
 EXIT:
     if (fd >= 0) {
-       fsync(fd);
-       close(fd);
+       if (sync_gpt(fd) < 0)
+           r = -1;
+       if (close(fd) < 0)
+           r = -1;
     }
     return r;
 }
@@ -1502,6 +1521,9 @@ int gpt_disk_commit(struct gpt_disk *disk)
                                 __func__);
                 goto error;
         }
+        // Preserve the backup until the complete primary copy is durable.
+        if (sync_gpt(fd) < 0)
+                goto error;
         //Write back the secondary header
         if(gpt_set_header(disk->hdr_bak, fd, SECONDARY_GPT) != 0) {
                 ALOGE("%s: Failed to update secondary GPT header",
@@ -1514,8 +1536,13 @@ int gpt_disk_commit(struct gpt_disk *disk)
                                 __func__);
                 goto error;
         }
-        fsync(fd);
-        close(fd);
+        if (sync_gpt(fd) < 0)
+                goto error;
+        // Do not retry close: the descriptor may already have been released.
+        if (close(fd) < 0) {
+                ALOGE("%s: Failed to close GPT device: %s", __func__, strerror(errno));
+                return -1;
+        }
         return 0;
 error:
         if (fd >= 0)
