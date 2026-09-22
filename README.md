@@ -18,3 +18,24 @@ remain necessary before using this code to change slot state.
 Upstream history, source copyright headers and NOTICE are retained. These build
 adaptations do not relicense upstream code. Source files carry their applicable
 Linux Foundation redistribution or Apache-2.0 terms.
+
+GPT I/O completes short transfers, retries interrupted operations and rejects
+EOF or zero-progress writes. Committing slot metadata synchronizes the complete
+primary GPT before touching its backup, then synchronizes the backup; sync and
+close failures are returned to the caller. This preserves the existing copy
+order. It does not make updates across multiple LUNs atomic or establish physical
+power-loss recovery.
+
+Run the host regressions on Linux with a C++17 compiler, GNU-compatible linker
+and zlib development headers/library:
+
+```sh
+tests/run-gpt-io-tests.sh
+```
+
+The runner accepts the conventional `CXX`, `CPPFLAGS`, `CXXFLAGS`, `LDFLAGS` and
+`LDLIBS` overrides. Tests compile the actual implementation and inject syscall
+failures against temporary regular files, including incomplete transfers,
+interruption, failed synchronization and descriptor cleanup. They never access
+a block device. Android compilation and device slot behavior remain separate
+validation requirements.
