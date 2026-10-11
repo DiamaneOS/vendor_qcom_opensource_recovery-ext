@@ -117,7 +117,7 @@ extern "C" int __wrap_fsync(int fd) {
     return __real_fsync(fd);
 }
 extern "C" int __wrap_ioctl(int fd, unsigned long request, ...) {
-    // The only emulated device operation is the sector size of our regular file.
+    // The only emulated device operation is the sector size of the fixture's regular file.
     if (fd != fixture_fd || request != BLKSSZGET) { errno = ENOTTY; return -1; }
     va_list args; va_start(args, request);
     *va_arg(args, uint32_t*) = 512; va_end(args); return 0;
