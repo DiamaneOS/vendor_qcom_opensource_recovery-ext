@@ -1,9 +1,9 @@
 # Qualcomm GPT and UFS recovery support
 
-DiamaneOS's fork of Fairphone's implementation (Fairphone Gerrit
-`platform/vendor/qcom-opensource/recovery-ext`), used by the Qualcomm A/B
-boot-control service. Upstream history is kept; DiamaneOS changes are the
-commits on top.
+DiamaneOS's fork of Qualcomm's implementation from CodeLinaro
+(`clo/la/platform/vendor/qcom-opensource/recovery-ext`), used by the Qualcomm
+A/B boot-control service. Upstream history is kept, and DiamaneOS changes are
+the commits on top.
 
 ## Build
 
@@ -11,10 +11,10 @@ commits on top.
   attributes and UFS boot-LUN selection.
 - It leaves out the legacy Edify registration source and its ION/updater
   dependencies.
-- Soong builds both variants; the old Make definitions are inactive.
+- Soong builds both variants. The old Make definitions are inactive.
 - It builds with the product's normal hardening, including CFI.
-- `SOONG_CONFIG_ufsbsg_ufsframework` selects the UFS interface; the FP6 product
-  selects `bsg`.
+- `SOONG_CONFIG_ufsbsg_ufsframework` selects the UFS interface. DiamaneOS products
+  select `bsg`.
 
 ## GPT I/O
 
