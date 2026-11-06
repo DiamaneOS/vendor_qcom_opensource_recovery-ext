@@ -660,7 +660,7 @@ int gpt_utils_set_xbl_boot_partition(enum boot_chain chain)
                 else if (!stat(XBL_AB_SECONDARY, &st))
                         boot_dev = XBL_AB_SECONDARY;
                 else {
-                        fprintf(stderr, "%s: Failed to locate secondary xbl\n",
+                        ALOGE("%s: Failed to locate secondary xbl",
                                         __func__);
                         goto error;
                 }
@@ -671,12 +671,12 @@ int gpt_utils_set_xbl_boot_partition(enum boot_chain chain)
                 else if (!stat(XBL_AB_PRIMARY, &st))
                         boot_dev = XBL_AB_PRIMARY;
                 else {
-                        fprintf(stderr, "%s: Failed to locate primary xbl\n",
+                        ALOGE("%s: Failed to locate primary xbl",
                                         __func__);
                         goto error;
                 }
         } else {
-                fprintf(stderr, "%s: Invalid boot chain id\n", __func__);
+                ALOGE("%s: Invalid boot chain id", __func__);
                 goto error;
         }
         //We need either both xbl and xblbak or both xbl_a and xbl_b to exist at
@@ -685,24 +685,27 @@ int gpt_utils_set_xbl_boot_partition(enum boot_chain chain)
                                 stat(XBL_BACKUP, &st)) &&
                         (stat(XBL_AB_PRIMARY, &st) ||
                          stat(XBL_AB_SECONDARY, &st))) {
-                fprintf(stderr, "%s:primary/secondary XBL prt not found(%s)\n",
+                ALOGE("%s:primary/secondary XBL prt not found(%s)",
                                 __func__,
                                 strerror(errno));
                 goto error;
         }
-        fprintf(stderr, "%s: setting %s lun as boot lun\n",
+        ALOGI("%s: setting %s lun as boot lun",
                         __func__,
                         boot_dev);
+#ifndef _BSG_FRAMEWORK_KERNEL_HEADERS
+        /* Only the sg path needs the node. The BSG path finds the UFS BSG device itself. */
         if (get_scsi_node_from_bootdevice(boot_dev,
                                 sg_dev_node,
                                 sizeof(sg_dev_node))) {
-                fprintf(stderr, "%s: Failed to get scsi node path for xblbak\n",
+                ALOGE("%s: Failed to get scsi node path for xblbak",
                                 __func__);
                 goto error;
         }
+#endif
         /* set boot lun using /dev/sg or /dev/ufs-bsg* */
         if (set_boot_lun(sg_dev_node, boot_lun_id)) {
-                fprintf(stderr, "%s: Failed to set xblbak as boot partition\n",
+                ALOGE("%s: Failed to set xblbak as boot partition",
                                 __func__);
                 goto error;
         }

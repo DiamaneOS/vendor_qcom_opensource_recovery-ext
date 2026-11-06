@@ -219,7 +219,7 @@ int32_t set_boot_lun(char *sg_dev, uint8_t boot_lun_id)
 
         data = (struct ufs_ioctl_query_data*)malloc(ioctl_data_size);
         if (!data) {
-                fprintf(stderr, "%s: Failed to alloc query data struct\n",
+                ALOGE("%s: Failed to alloc query data struct",
                                 __func__);
                 goto error;
         }
@@ -230,7 +230,7 @@ int32_t set_boot_lun(char *sg_dev, uint8_t boot_lun_id)
         data->buffer[0] = boot_lun_id;
         fd = open(sg_dev, O_RDWR);
         if (fd < 0) {
-                fprintf(stderr, "%s: Failed to open %s(%s)\n",
+                ALOGE("%s: Failed to open %s(%s)",
                                 __func__,
                                 sg_dev,
                                 strerror(errno));
@@ -238,7 +238,7 @@ int32_t set_boot_lun(char *sg_dev, uint8_t boot_lun_id)
         }
         rc = ioctl(fd, UFS_IOCTL_QUERY, data);
         if (rc) {
-                fprintf(stderr, "%s: UFS query ioctl failed(%s)\n",
+                ALOGE("%s: UFS query ioctl failed(%s)",
                                 __func__,
                                 strerror(errno));
                 goto error;
