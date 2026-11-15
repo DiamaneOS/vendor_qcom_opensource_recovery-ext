@@ -11,3 +11,9 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
   -Wl,--wrap=lseek64 -Wl,--wrap=fsync -Wl,--wrap=ioctl \
   -Wl,--wrap=open -Wl,--wrap=close -o "$work/gpt-io-test"
 "$work/gpt-io-test"
+for headers in _BSG_FRAMEWORK_KERNEL_HEADERS _GENERIC_KERNEL_HEADERS; do
+  "${CXX:-c++}" ${CPPFLAGS:-} ${CXXFLAGS:-} -std=c++17 -O1 -g -D$headers \
+    -I"$root/tests/stubs" "$root/tests/boot_lun_test.cpp" ${LDFLAGS:-} ${LDLIBS--lz} \
+    -o "$work/boot-lun-test"
+  "$work/boot-lun-test"
+done

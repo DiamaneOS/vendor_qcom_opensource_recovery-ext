@@ -182,6 +182,11 @@ int gpt_utils_is_ufs_device();
 //the boot lun to either LUNA or LUNB
 int gpt_utils_set_xbl_boot_partition(enum boot_chain chain);
 
+//Read which XBL the boot LUN points at: NORMAL_BOOT for xbl_a (LUN value 1),
+//BACKUP_BOOT for xbl_b (2). Returns -1 when the LUN cannot be read or holds
+//any other value. Only builds with UFS BSG support can read it.
+int gpt_utils_get_xbl_boot_partition(enum boot_chain *chain);
+
 //Given a vector of partition names as a input and a reference to a map,
 //populate the map to indicate which physical disk each of the partitions
 //sits on. The key in the map is the path to the block device where the

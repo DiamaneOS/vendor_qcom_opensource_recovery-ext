@@ -126,6 +126,7 @@ struct update_data {
 };
 
 int32_t set_boot_lun(char *sg_dev,uint8_t boot_lun_id);
+int32_t get_boot_lun(uint32_t *boot_lun_id);
 /******************************************************************************
  * FUNCTIONS
  ******************************************************************************/
@@ -712,6 +713,38 @@ int gpt_utils_set_xbl_boot_partition(enum boot_chain chain)
         return 0;
 error:
         return -1;
+}
+
+//Maps a bBootLunEn value to the boot chain. Any other value means the boot
+//LUN is disabled or unknown, which the caller must treat as an error.
+static int boot_chain_from_lun_id(uint32_t boot_lun_id, enum boot_chain *chain)
+{
+        if (boot_lun_id == BOOT_LUN_A_ID) {
+                *chain = NORMAL_BOOT;
+        } else if (boot_lun_id == BOOT_LUN_B_ID) {
+                *chain = BACKUP_BOOT;
+        } else {
+                ALOGE("%s: Unexpected boot LUN value %u", __func__, boot_lun_id);
+                return -1;
+        }
+        return 0;
+}
+
+//Reads which XBL the device boots from. The bootloader refuses to boot when
+//this disagrees with the GPT active slot, so callers check it against the slot.
+int gpt_utils_get_xbl_boot_partition(enum boot_chain *chain)
+{
+        uint32_t boot_lun_id = 0;
+
+        if (!chain) {
+                ALOGE("%s: Invalid argument", __func__);
+                return -1;
+        }
+        if (get_boot_lun(&boot_lun_id)) {
+                ALOGE("%s: Failed to read the boot LUN", __func__);
+                return -1;
+        }
+        return boot_chain_from_lun_id(boot_lun_id, chain);
 }
 
 int gpt_utils_is_ufs_device()

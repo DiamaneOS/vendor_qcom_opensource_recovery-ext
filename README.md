@@ -13,6 +13,8 @@ the commits on top.
   dependencies.
 - Soong builds both variants. The old Make definitions are inactive.
 - It builds with the product's normal hardening, including CFI.
+- Without `bsg` the boot LUN can be neither switched nor read, and both calls
+  fail.
 - `SOONG_CONFIG_ufsbsg_ufsframework` selects the UFS interface. DiamaneOS products
   select `bsg`.
 
@@ -41,6 +43,8 @@ tests/run-gpt-io-tests.sh
   temporary regular files: incomplete transfers, interruption, failed
   synchronization and descriptor cleanup.
 - They never access a block device.
+- The boot LUN tests read and write bBootLunEn through a fake UFS BSG device,
+  once as a BSG build and once as a build without BSG, which must refuse.
 
 ## Upstream and licensing
 

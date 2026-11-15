@@ -152,9 +152,27 @@ static void compose_ufs_bsg_query_req(struct ufs_bsg_request *req, __u8 func,
 }
 
 
+/*
+ * Takes the attribute value from a query reply. The kernel copies the device's
+ * response UPIU into the reply as it is, so the value is big endian.
+ */
+static int ufs_bsg_reply_attr(const struct ufs_bsg_reply *rsp, __u32 *value)
+{
+    /* The query response code is byte 6 of the UPIU header, in its second dword */
+    __u8 response = (be32toh(rsp->upiu_rsp.header.dword_1) >> 8) & 0xff;
+
+    if (response) {
+        ALOGE("%s: Query failed on the device (response code: 0x%x)", __func__, response);
+        return -EIO;
+    }
+    *value = be32toh(rsp->upiu_rsp.qr.value);
+    return 0;
+}
+
+/* A read passes rsp_value to receive the attribute. A write passes NULL. */
 static int ufs_query_attr(int fd, __u32 value,
         __u8 func, __u8 opcode, __u8 idn,
-        __u8 index, __u8 sel)
+        __u8 index, __u8 sel, __u32 *rsp_value)
 {
     struct ufs_bsg_request req;
     memset(&req, 0, sizeof(req));
@@ -176,6 +194,8 @@ static int ufs_query_attr(int fd, __u32 value,
     if (ret)
         ALOGE("%s: Error from ufs_bsg_ioctl (return value: %d, error no: %d\n)",
                 __func__, ret, errno);
+    else if (rsp_value)
+        ret = ufs_bsg_reply_attr(&rsp, rsp_value);
 
     return ret;
 }
@@ -196,13 +216,36 @@ int32_t set_boot_lun(char *sg_dev,uint8_t lun_id)
     ALOGV("Opened ufs bsg dev: %s\n", ufs_bsg_dev);
 
     ret = ufs_query_attr(fd_ufs_bsg, boot_lun_id, QUERY_REQ_FUNC_STD_WRITE,
-            QUERY_REQ_OP_WRITE_ATTR, QUERY_ATTR_IDN_BOOT_LU_EN, 0, 0);
+            QUERY_REQ_OP_WRITE_ATTR, QUERY_ATTR_IDN_BOOT_LU_EN, 0, 0, NULL);
     if (ret) {
         ALOGE("Error requesting ufs attr idn %d via query ioctl (return value: %d, error no: %d)",
                 QUERY_ATTR_IDN_BOOT_LU_EN, ret, errno);
         goto out;
     }
 out:
+    ufs_bsg_dev_close();
+    return ret;
+}
+
+/* Reads bBootLunEn: 1 when the device boots from xbl_a, 2 for xbl_b, 0 when disabled */
+int32_t get_boot_lun(uint32_t *boot_lun_id)
+{
+    int32_t ret;
+
+    ret = get_ufs_bsg_dev();
+    if (ret)
+        return ret;
+
+    ret = ufs_bsg_dev_open();
+    if (ret)
+        return ret;
+
+    ret = ufs_query_attr(fd_ufs_bsg, 0, QUERY_REQ_FUNC_STD_READ,
+            QUERY_REQ_OP_READ_ATTR, QUERY_ATTR_IDN_BOOT_LU_EN, 0, 0, boot_lun_id);
+    if (ret)
+        ALOGE("Error reading ufs attr idn %d via query ioctl (return value: %d, error no: %d)",
+                QUERY_ATTR_IDN_BOOT_LU_EN, ret, errno);
+
     ufs_bsg_dev_close();
     return ret;
 }
@@ -253,8 +296,19 @@ error:
                 free(data);
         return -1;
 #else
-        return 0;
+        /* Reporting success here would leave the boot LUN on the old slot */
+        ALOGE("%s: The boot LUN cannot be switched in this build (no UFS BSG support)",
+                        __func__);
+        return -1;
 #endif
+}
+
+/* Reading the boot LUN is only implemented through UFS BSG */
+int32_t get_boot_lun(uint32_t *boot_lun_id)
+{
+        ALOGE("%s: The boot LUN cannot be read in this build (no UFS BSG support)",
+                        __func__);
+        return -1;
 }
 #endif
 
